@@ -16,9 +16,15 @@ public class Main {
         staticFileLocation("/public");
         CourseIdeaDAO dao = new SimpleCourseIdeaDAO();
 
+        before((req, res) -> {
+           if (req.cookie("username") != null) {
+               req.attribute("username", req.cookie("username"));
+           }
+        });
+
         before("/ideas", (req, res) -> {
             //TODO: aas - Send message about redirect... somehow
-           if(req.cookie("username") != null) {
+           if(req.attribute("username") == null) {
                res.redirect("/");
                halt();
            }
@@ -26,7 +32,7 @@ public class Main {
 
         get("/", (req, res) -> {
            Map<String, String> model = new HashMap<>();
-           model.put("username", req.cookie("username"));
+           model.put("username", req.attribute("username"));
            return new ModelAndView(model, "index.hbs");
         }, new HandlebarsTemplateEngine());
 
@@ -49,8 +55,15 @@ public class Main {
             String title = req.queryParams("title");
             //TODO: aas - This username is tied to cookie implementation
             CourseIdea courseIdea = new CourseIdea(title,
-                    req.cookie("username"));
+                    req.attribute("username"));
             dao.add(courseIdea);
+            res.redirect("/ideas");
+            return null;
+        });
+
+        post("/ideas/:slug/vote", (req, res) -> {
+            CourseIdea idea = dao.findBySlug(req.params("slug"));
+            idea.addVoter(req.attribute("username"));
             res.redirect("/ideas");
             return null;
         });
