@@ -2,7 +2,9 @@ package com.adelacebal.courses.model;
 
 import com.github.slugify.Slugify;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class CourseIdea {
@@ -30,6 +32,10 @@ public class CourseIdea {
 
     public String getSlug() {
         return slug;
+    }
+
+    public List<String> getVoters() {
+        return new ArrayList<>(voters);
     }
 
     public boolean addVoter(String voterUserName) {

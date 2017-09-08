@@ -2,6 +2,7 @@ package com.adelacebal.courses;
 
 import com.adelacebal.courses.model.CourseIdea;
 import com.adelacebal.courses.model.CourseIdeaDAO;
+import com.adelacebal.courses.model.NotFoundException;
 import com.adelacebal.courses.model.SimpleCourseIdeaDAO;
 import spark.ModelAndView;
 import spark.template.handlebars.HandlebarsTemplateEngine;
@@ -61,11 +62,25 @@ public class Main {
             return null;
         });
 
+        get("/idea/:slug", (req, res) -> {
+            Map<String, Object> model = new HashMap<>();
+            model.put("idea", dao.findBySlug(req.params("slug")));
+            return new ModelAndView(model, "idea.hbs");
+        }, new HandlebarsTemplateEngine());
+
         post("/ideas/:slug/vote", (req, res) -> {
             CourseIdea idea = dao.findBySlug(req.params("slug"));
             idea.addVoter(req.attribute("username"));
             res.redirect("/ideas");
             return null;
+        });
+
+        exception(NotFoundException.class, (exc, req, res) -> {
+            res.status(404);
+            HandlebarsTemplateEngine engine = new HandlebarsTemplateEngine();
+            String html = engine.render(
+                    new ModelAndView(null, "not-found.hbs"));
+            res.body(html);
         });
     }
 }
