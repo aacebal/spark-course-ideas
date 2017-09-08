@@ -1,5 +1,6 @@
 package com.adelacebal.courses;
 
+import com.adelacebal.courses.model.CourseIdea;
 import com.adelacebal.courses.model.CourseIdeaDAO;
 import com.adelacebal.courses.model.SimpleCourseIdeaDAO;
 import spark.ModelAndView;
@@ -8,14 +9,20 @@ import spark.template.handlebars.HandlebarsTemplateEngine;
 import java.util.HashMap;
 import java.util.Map;
 
-import static spark.Spark.get;
-import static spark.Spark.post;
-import static spark.Spark.staticFileLocation;
+import static spark.Spark.*;
 
 public class Main {
     public static void main(String[] args) {
         staticFileLocation("/public");
         CourseIdeaDAO dao = new SimpleCourseIdeaDAO();
+
+        before("/ideas", (req, res) -> {
+            //TODO: aas - Send message about redirect... somehow
+           if(req.cookie("username") != null) {
+               res.redirect("/");
+               halt();
+           }
+        });
 
         get("/", (req, res) -> {
            Map<String, String> model = new HashMap<>();
@@ -28,13 +35,24 @@ public class Main {
             String username = req.queryParams("username");
             res.cookie("username", username);
             model.put("username", username);
-            return new ModelAndView(model, "sign-in.hbs");
-        }, new HandlebarsTemplateEngine());
+            res.redirect("/");
+            return null;
+        });
 
         get("/ideas", (req, res) -> {
             Map<String, Object> model = new HashMap<>();
             model.put("ideas", dao.findAll());
-            return new ModelAndView(model, "ideal.hbs");
+            return new ModelAndView(model, "ideas.hbs");
         }, new HandlebarsTemplateEngine());
+
+        post("/ideas", (req, res) -> {
+            String title = req.queryParams("title");
+            //TODO: aas - This username is tied to cookie implementation
+            CourseIdea courseIdea = new CourseIdea(title,
+                    req.cookie("username"));
+            dao.add(courseIdea);
+            res.redirect("/ideas");
+            return null;
+        });
     }
 }
