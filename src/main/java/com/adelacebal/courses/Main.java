@@ -5,6 +5,7 @@ import com.adelacebal.courses.model.CourseIdeaDAO;
 import com.adelacebal.courses.model.NotFoundException;
 import com.adelacebal.courses.model.SimpleCourseIdeaDAO;
 import spark.ModelAndView;
+import spark.Request;
 import spark.template.handlebars.HandlebarsTemplateEngine;
 
 import java.util.HashMap;
@@ -13,6 +14,8 @@ import java.util.Map;
 import static spark.Spark.*;
 
 public class Main {
+    private static final String FLASH_MESSAGE_KEY = "flash_message";
+
     public static void main(String[] args) {
         staticFileLocation("/public");
         CourseIdeaDAO dao = new SimpleCourseIdeaDAO();
@@ -24,8 +27,8 @@ public class Main {
         });
 
         before("/ideas", (req, res) -> {
-            //TODO: aas - Send message about redirect... somehow
            if(req.attribute("username") == null) {
+               setFlashMessage(req,"Whoops, please sign in first!");
                res.redirect("/");
                halt();
            }
@@ -34,6 +37,7 @@ public class Main {
         get("/", (req, res) -> {
            Map<String, String> model = new HashMap<>();
            model.put("username", req.attribute("username"));
+           model.put("flashMessage", captureFlashMessage(req));
            return new ModelAndView(model, "index.hbs");
         }, new HandlebarsTemplateEngine());
 
@@ -49,6 +53,7 @@ public class Main {
         get("/ideas", (req, res) -> {
             Map<String, Object> model = new HashMap<>();
             model.put("ideas", dao.findAll());
+            model.put("flashMessage", captureFlashMessage(req));
             return new ModelAndView(model, "ideas.hbs");
         }, new HandlebarsTemplateEngine());
 
@@ -70,7 +75,12 @@ public class Main {
 
         post("/ideas/:slug/vote", (req, res) -> {
             CourseIdea idea = dao.findBySlug(req.params("slug"));
-            idea.addVoter(req.attribute("username"));
+            boolean added = idea.addVoter(req.attribute("username"));
+            if (added) {
+                setFlashMessage(req, "Thank you for voting!");
+            } else  {
+                setFlashMessage(req, "You already voted!");
+            }
             res.redirect("/ideas");
             return null;
         });
@@ -82,5 +92,27 @@ public class Main {
                     new ModelAndView(null, "not-found.hbs"));
             res.body(html);
         });
+    }
+
+    private static void setFlashMessage(Request req, String message) {
+        req.session().attribute(FLASH_MESSAGE_KEY, message);
+    }
+
+    private static String getFlashMessage(Request req) {
+        if (req.session(false) == null) {
+            return null;
+        }
+        if (!req.session().attributes().contains(FLASH_MESSAGE_KEY)) {
+            return null;
+        }
+        return (String) req.session().attribute(FLASH_MESSAGE_KEY);
+    }
+
+    private static String captureFlashMessage(Request req) {
+        String message = getFlashMessage(req);
+        if (message != null) {
+            req.session().removeAttribute(FLASH_MESSAGE_KEY);
+        }
+        return message;
     }
 }
